@@ -1,0 +1,48 @@
+{
+  "q": "iphone",
+  "suggested_queries": [
+    {
+      "q": "iphone 15",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    },
+    {
+      "q": "iphone14pro",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    },
+    {
+      "q": "iphone14promax",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    },
+    {
+      "q": "iphone13promax",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    },
+    {
+      "q": "iphone 17",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    },
+    {
+      "q": "iphone 16e",
+      "match_start": 0,
+      "match_end": 6,
+      "is_verified_store": false,
+      "filters": []
+    }
+  ],
+  "filter_logos": []
+}
