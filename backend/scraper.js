@@ -1,7 +1,8 @@
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
-const GOOGLE_API_KEY = 'b31cd72ead4c5d918798f845c319c2e12397a535';
+require('dotenv').config();
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 async function searchProducts(userQuery, options = {}) {
     // Permissive check: Default to TRUE unless explicitly 'false'

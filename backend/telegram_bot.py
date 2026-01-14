@@ -1,8 +1,13 @@
 import requests
 import time
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Seus dados reais
-TOKEN = "8541687378:AAG22m8MVK5rVCk5Eecy0kAo0sMUGkNipOE"
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 URL_BASE = f"https://api.telegram.org/bot{TOKEN}"
 
 print("🤖 Servidor do Renato Iniciado...")
