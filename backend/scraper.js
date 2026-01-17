@@ -93,10 +93,9 @@ async function searchProducts(userQuery, options = {}) {
                 '--disable-gpu'
             ];
 
-            // '--single-process' causes instability on Windows
-            if (process.platform !== 'win32') {
-                launchArgs.push('--single-process');
-            }
+
+            // '--single-process' removed to fix Render Target closed error
+
 
             browser = await puppeteer.launch({
                 headless: 'new',
