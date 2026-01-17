@@ -120,33 +120,36 @@ async function searchProducts(userQuery, options = {}) {
                 const results = [];
 
                 items.forEach(item => {
-                    // Title Selector
-                    const titleEl = item.querySelector('.ui-search-item__title, .poly-component__title, h2');
+                    // --- SELECTORS UPDATE FOR 2026 LAYOUT (Poly Card) ---
+                    // 1. Title
+                    const titleEl = item.querySelector('.poly-component__title, .ui-search-item__title, h2.ui-search-item__title');
 
-                    // Link Selector
-                    const linkEl = item.querySelector('.ui-search-link, .poly-component__title-link, a');
+                    // 2. Link
+                    const linkEl = item.querySelector('a.poly-component__title, .ui-search-link, .ui-search-item__group__element.ui-search-link');
 
-                    // Image Selector
-                    const imageEl = item.querySelector('.ui-search-result-image__element, .poly-component__picture');
+                    // 3. Image
+                    const imageEl = item.querySelector('.poly-component__picture, .ui-search-result-image__element');
 
-                    // Price Container Selector (Look for the selling price container)
-                    // CRITICAL: We must avoid the "previous price" (struck through) which often appears first.
-                    // 1. Try specific "current price" classes first.
-                    // 2. Look for the second line of the price block (standard ML behavior for discounted items).
-                    let priceContainer = item.querySelector('.poly-price__current');
+                    // 4. Price
+                    // The new layout puts valid prices in .poly-component__price
+                    // We need to match the "current" price. Usually it's the one that is NOT 'previous' (struck through).
 
-                    if (!priceContainer) {
-                        priceContainer = item.querySelector('.ui-search-price__second-line');
+                    let priceContainer;
+
+                    // Strategy A: Look for the specific "price" block locally in the item
+                    const priceBlock = item.querySelector('.poly-component__price, .ui-search-price');
+
+                    if (priceBlock) {
+                        // Find the distinct money amount that is NOT the previous price
+                        // .andes-money-amount--previous is the struck-through price
+                        priceContainer = priceBlock.querySelector('.andes-money-amount:not(.andes-money-amount--previous)');
                     }
 
+                    // Strategy B: Fallback for older layouts
                     if (!priceContainer) {
-                        // Fallback: Check for a price that is NOT inside an 'original-value' container
-                        // This selector looks for a price part that is NOT a strike-through
-                        priceContainer = item.querySelector('.ui-search-price__part:not(.ui-search-price__original-value)');
+                        priceContainer = item.querySelector('.ui-search-price__second-line .andes-money-amount');
                     }
-
                     if (!priceContainer) {
-                        // Last resort for old layouts
                         priceContainer = item.querySelector('.price-tag-amount');
                     }
 
