@@ -87,18 +87,12 @@ async function searchProducts(userQuery, options = {}) {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
                 '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu'
             ];
 
-
-            // '--single-process' removed to fix Render Target closed error
-
-
             browser = await puppeteer.launch({
-                headless: 'new',
+                headless: true,
                 args: launchArgs
             });
             const page = await browser.newPage();
