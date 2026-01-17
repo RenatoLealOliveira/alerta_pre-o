@@ -82,9 +82,25 @@ async function searchProducts(userQuery, options = {}) {
     if (isMlEnabled) {
         let browser;
         try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            const launchArgs = [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ];
+
+            // '--single-process' causes instability on Windows
+            if (process.platform !== 'win32') {
+                launchArgs.push('--single-process');
+            }
+
             browser = await puppeteer.launch({
                 headless: 'new',
-                // args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: launchArgs
             });
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
