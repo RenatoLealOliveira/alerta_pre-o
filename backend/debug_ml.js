@@ -1,19 +1,13 @@
-const axios = require('axios');
-const fs = require('fs');
+const { searchProducts } = require('./scraper');
 
 async function test() {
     try {
-        const url = "https://http2.mlstatic.com/resources/sites/MLB/autosuggest?showFilters=true&limit=6&api_version=2&q=plaistatio";
-        console.log("Fetching:", url);
-        const response = await axios.get(url);
+        const query = "iphone 15 128gb";
+        console.log(`Testing search for: ${query}`);
 
-        console.log("Status:", response.status);
-        const data = response.data;
+        const result = await searchProducts(query, { ml: 'true', google: 'false' }); // Test only ML
 
-        console.log("Data structure:", JSON.stringify(data, null, 2));
-
-        fs.writeFileSync('debug_output.json', JSON.stringify(data, null, 2));
-        console.log("Saved to debug_output.json");
+        console.log("Result:", JSON.stringify(result, null, 2));
 
     } catch (e) {
         console.error("Error:", e.message);
