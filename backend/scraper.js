@@ -109,14 +109,45 @@ async function searchProducts(userQuery, options = {}) {
             // Shared Stealth Headers
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-            // Clean query
+            // --- HUMAN SIMULATION FLOW ---
+            // 1. Go to Home Page first (creates session/cookies)
+            console.log("[Scraper] 🚶 Visiting Home Page first...");
+            await page.goto('https://www.mercadolivre.com.br/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+            // 2. Wait a bit (Human think time)
+            await new Promise(r => setTimeout(r, 2000));
+
+            // 3. Handle Cookie Consent (if any)
+            try {
+                const cookieBtn = await page.$('button[data-testid="action:understood-button"], button.cookie-consent-banner-opt-out__action--key-accept');
+                if (cookieBtn) {
+                    console.log("[Scraper] 🍪 Clicking Cookie Consent...");
+                    await cookieBtn.click();
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            } catch (e) {
+                // Ignore cookie errors
+            }
+
+            // 4. Type Query in Search Bar
+            console.log(`[Scraper] ⌨️ Typing query: "${userQuery}"`);
+            const searchInput = await page.waitForSelector('input.nav-search-input', { timeout: 10000 });
+
+            // Clear existing text if any (focus and select all)
+            await searchInput.click({ clickCount: 3 });
+            await searchInput.type(userQuery, { delay: 100 }); // Slow typing like human
+
+            // 5. Submit Search form
+            await Promise.all([
+                page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+                searchInput.press('Enter')
+            ]);
+
+            // Clean query (Just for logging/fallback, not used for navigation anymore)
             const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-            let searchUrl = `https://lista.mercadolivre.com.br/${cleanQuery}`;
+            let searchUrl = page.url();
 
-            console.log(`[Scraper] 🔍 Searching ML: ${searchUrl}`);
-
-            // Optimized Timeout
-            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 35000 });
+            console.log(`[Scraper] 🔍 Landed on Search Page: ${searchUrl}`);
 
             try {
                 // Wait for any relevant content
