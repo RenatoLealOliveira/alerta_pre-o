@@ -106,31 +106,26 @@ async function searchProducts(userQuery, options = {}) {
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-            // --- HUMAN SIMULATION ---
-            console.log("[Scraper] 🚶 Visiting Kabum Home...");
-            // Use domcontentloaded for speed on Render
-            await page.goto('https://www.kabum.com.br/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            // --- DIRECT NAVIGATION (Lighter for Render) ---
+            // "Human Flow" failed on Render (Timeout on Home Page input).
+            // Kabum usually accepts direct search links better than ML.
+            const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
+            const searchUrl = `https://www.kabum.com.br/busca/${cleanQuery}`;
 
-            // Reduced wait time for Render (it's already slow)
-            await new Promise(r => setTimeout(r, 500));
+            console.log(`[Scraper] 🔍 Direct Navigation to: ${searchUrl}`);
 
-            // Type Query
-            console.log(`[Scraper] ⌨️ Typing query: "${userQuery}"`);
-            const searchInput = await page.waitForSelector('input#inputBusca', { timeout: 15000 });
+            // Increased timeout for Render
+            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-            await searchInput.click();
-            await searchInput.type(userQuery, { delay: 50 }); // Faster typing
-            await page.keyboard.press('Enter');
-
-            console.log("[Scraper] 🔍 Searching...");
-            // Increased timeout for search results
-            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
-
-            // Wait for products
+            // Wait for products directly
             try {
-                await page.waitForSelector('article.productCard', { timeout: 10000 });
+                // Wait for either products OR the "No products found" message container to fail fast
+                await page.waitForSelector('article, .productCard', { timeout: 20000 });
             } catch (e) {
                 console.log("[Scraper] ⚠️ Warning: Timeout waiting for product cards.");
+                // Debug Block/Error
+                const debugInfo = await page.evaluate(() => ({ title: document.title, body: document.body.innerText.slice(0, 100) }));
+                console.log(`[Scraper] 🛑 Debug Info - Title: "${debugInfo.title}"`);
             }
 
             const kabumProducts = await page.evaluate((query) => {
