@@ -108,20 +108,23 @@ async function searchProducts(userQuery, options = {}) {
 
             // --- HUMAN SIMULATION ---
             console.log("[Scraper] 🚶 Visiting Kabum Home...");
-            await page.goto('https://www.kabum.com.br/', { waitUntil: 'networkidle2', timeout: 30000 });
+            // Use domcontentloaded for speed on Render
+            await page.goto('https://www.kabum.com.br/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-            await new Promise(r => setTimeout(r, 1500));
+            // Reduced wait time for Render (it's already slow)
+            await new Promise(r => setTimeout(r, 500));
 
             // Type Query
             console.log(`[Scraper] ⌨️ Typing query: "${userQuery}"`);
-            const searchInput = await page.waitForSelector('input#inputBusca', { timeout: 10000 });
+            const searchInput = await page.waitForSelector('input#inputBusca', { timeout: 15000 });
 
             await searchInput.click();
-            await searchInput.type(userQuery, { delay: 100 });
+            await searchInput.type(userQuery, { delay: 50 }); // Faster typing
             await page.keyboard.press('Enter');
 
             console.log("[Scraper] 🔍 Searching...");
-            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+            // Increased timeout for search results
+            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
 
             // Wait for products
             try {
