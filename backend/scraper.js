@@ -1,6 +1,4 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+
 const axios = require('axios');
 
 require('dotenv').config();
@@ -80,47 +78,51 @@ async function searchProducts(userQuery, options = {}) {
         }
     }
 
-    // --- 2. MERCADO LIVRE STRATEGY (Puppeteer Hardened) ---
+    // --- 2. MERCADO LIVRE STRATEGY (PUPPETEER - DOCKER READY) ---
     if (isMlEnabled) {
         let browser;
         try {
-            const launchArgs = [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--disable-blink-features=AutomationControlled', // Critical evasion
-                '--window-size=1920,1080'
-            ];
+            console.log("[Scraper] 🚀 Launching Browser...");
 
-            browser = await puppeteer.launch({
-                headless: "new", // "new" is slightly more stealthy than true
-                args: launchArgs,
-                ignoreDefaultArgs: ['--enable-automation']
-            });
+            const puppeteer = require('puppeteer-extra');
+            const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+            puppeteer.use(StealthPlugin());
+
+            // Standard launch options for Docker/Render
+            // The Dockerfile env var PUPPETEER_EXECUTABLE_PATH handles the chrome path
+            const launchConfig = {
+                headless: "new",
+                args: [
+                    '--no-sandbox', // Critical for Docker/Root
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage', // Critical for Docker memory
+                    '--disable-gpu',
+                    '--no-first-run',
+                    '--disable-blink-features=AutomationControlled',
+                    '--window-size=1920,1080'
+                ]
+            };
+
+            browser = await puppeteer.launch(launchConfig);
             const page = await browser.newPage();
 
-            // Hardened Stealth Headers
+            // Shared Stealth Headers
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-            await page.setExtraHTTPHeaders({
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            });
 
-            // Clean query to avoid some bot triggers on weird URLs
+            // Clean query
             const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
             let searchUrl = `https://lista.mercadolivre.com.br/${cleanQuery}`;
 
-            console.log(`[Scraper] 🔍 Searching ML (Puppeteer): ${searchUrl}`);
+            console.log(`[Scraper] 🔍 Searching ML: ${searchUrl}`);
 
-            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            // Optimized Timeout
+            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 35000 });
 
-            // Wait specifically for the new "Poly" cards OR old cards
             try {
-                await page.waitForSelector('.poly-card, .ui-search-layout__item, .andes-card', { timeout: 10000 });
+                // Wait for any relevant content
+                await page.waitForSelector('.poly-card, .ui-search-layout__item, .andes-card', { timeout: 8000 });
             } catch (e) {
-                console.log("[Scraper] ⚠️ Warning: Timeout waiting for selectors. Page might be empty or blocked. Checking content...");
+                console.log("[Scraper] ⚠️ Warning: Timeout waiting for selectors.");
             }
 
             const mlProducts = await page.evaluate((query) => {
@@ -128,35 +130,20 @@ async function searchProducts(userQuery, options = {}) {
                 const queryClean = cleanText(query);
                 const queryWords = queryClean.split(/\s+/).filter(w => w.length > 2);
 
-                // Simplified Negative Keywords
                 const negativeKeywords = ['capa', 'case', 'pelicula', 'vidro', 'suporte', 'cabo', 'peca', 'pecas'];
 
                 const items = document.querySelectorAll('.ui-search-layout__item, .poly-card, .andes-card, li.ui-search-layout__item');
                 const results = [];
 
                 items.forEach(item => {
-                    // --- UNIVERSAL SELECTORS (Poly + Legacy) ---
-                    // Title
                     const titleEl = item.querySelector('.poly-component__title, .ui-search-item__title, h2.ui-search-item__title, .poly-component__title-wrapper');
-
-                    // Link
                     const linkEl = item.querySelector('a.poly-component__title, .ui-search-link, a.ui-search-item__group__element');
-
-                    // Image
                     const imageEl = item.querySelector('.poly-component__picture, .ui-search-result-image__element, img');
 
-                    // Price - Find the MAIN price (not previous, not installments)
                     let priceContainer;
-
-                    // 1. Try finding price within the specific price container for the item
                     const priceBox = item.querySelector('.poly-component__price, .ui-search-price, .poly-price__current');
-                    if (priceBox) {
-                        priceContainer = priceBox.querySelector('.andes-money-amount:not(.andes-money-amount--previous)');
-                    }
-                    // 2. Fallback
-                    if (!priceContainer) {
-                        priceContainer = item.querySelector('.price-tag-amount');
-                    }
+                    if (priceBox) priceContainer = priceBox.querySelector('.andes-money-amount:not(.andes-money-amount--previous)');
+                    if (!priceContainer) priceContainer = item.querySelector('.price-tag-amount');
 
                     if (titleEl && priceContainer && linkEl) {
                         const title = titleEl.innerText || titleEl.textContent;
@@ -164,27 +151,13 @@ async function searchProducts(userQuery, options = {}) {
 
                         if (negativeKeywords.some(k => titleClean.includes(k))) return;
 
-                        // Strict Match Logic: EVERY significant word from query must be in title
-                        // "iphone 15" must have "iphone" AND "15"
-                        // This prevents "iphone 11" showing up for "iphone 15"
+                        // Strict Word Match
                         const matchesAll = queryWords.every(word => {
-                            // Escape special regex chars
                             const safeWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            // Create regex to match whole word (boundary \b) to avoid partial matches if needed, 
-                            // but simple includes is usually safer for varied inputs. 
-                            // Let's stick to simple includes for robustness with weird product titles, 
-                            // but ensure ALL words are there.
                             return titleClean.includes(word);
                         });
-
                         if (!matchesAll) return;
 
-                        // Additional Check: If query has numbers (e.g. "15"), ensure they match exactly as whole words if possible,
-                        // or at least ensure we don't return "11" when asking for "15".
-                        // The 'queryWords.every' above handles this well for "15" vs "11".
-
-                        // Price Parsing using the text content directly to be safer
-                        // Example: "R$ 4.299" or "4299"
                         const rawPrice = priceContainer.innerText.replace(/R\$\s?/, '').replace(/\./g, '').replace(',', '.');
                         const price = parseFloat(rawPrice);
 
@@ -213,7 +186,7 @@ async function searchProducts(userQuery, options = {}) {
             await browser.close();
 
         } catch (error) {
-            console.error(`[Scraper] ❌ ML Puppeteer Error: ${error.message}`);
+            console.error(`[Scraper] ❌ ML Error: ${error.message}`);
             errors.push(`Mercado Livre: ${error.message}`);
             if (browser) await browser.close();
         }
