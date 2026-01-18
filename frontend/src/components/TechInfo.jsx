@@ -16,7 +16,7 @@ const TechInfo = () => {
                         <Bot size={20} />
                     </div>
                     <div>
-                        <h5 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-1">Mercado Livre Scraping</h5>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-1">Kabum Scraping</h5>
                         <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                             Varredura em tempo real no maior marketplace da América Latina via <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-700 px-1 rounded dark:text-gray-300">Puppeteer</span>.
                         </p>

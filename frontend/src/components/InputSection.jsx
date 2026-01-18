@@ -172,8 +172,8 @@ const InputSection = ({ onSearch, isLoading }) => {
                         />
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all overflow-hidden ${selectedStores.ml ? 'bg-white border-yellow-400 shadow-md transform scale-105' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 grayscale opacity-70'}`}>
                             <img
-                                src="https://www.google.com/s2/favicons?domain=mercadolivre.com.br&sz=64"
-                                alt="Mercado Livre"
+                                src="https://www.google.com/s2/favicons?domain=kabum.com.br&sz=64"
+                                alt="Kabum"
                                 className="w-6 h-6 object-contain"
                             />
                         </div>
@@ -184,7 +184,7 @@ const InputSection = ({ onSearch, isLoading }) => {
                             </svg>
                         </div>
                     </div>
-                    <span className={`text-sm sm:text-base font-medium transition-colors ${selectedStores.ml ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-500'}`}>Mercado Livre</span>
+                    <span className={`text-sm sm:text-base font-medium transition-colors ${selectedStores.ml ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-500'}`}>Kabum</span>
                 </label>
 
                 <label className="flex items-center space-x-2 cursor-pointer group select-none">
