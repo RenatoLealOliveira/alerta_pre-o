@@ -181,6 +181,16 @@ async function searchProducts(userQuery, options = {}) {
                 return results;
             }, userQuery);
 
+            if (mlProducts.length === 0) {
+                const debugPage = await page.evaluate(() => ({
+                    title: document.title,
+                    text: document.body.innerText.substring(0, 200),
+                    html_len: document.body.innerHTML.length
+                }));
+                console.log(`[Scraper] ⚠️ ZERO ITEMS. Page Title: "${debugPage.title}"`);
+                console.log(`[Scraper] ⚠️ Page Start: "${debugPage.text.replace(/\n/g, ' ')}..."`);
+            }
+
             console.log(`[Scraper] ✅ ML found ${mlProducts.length} items.`);
             allProducts.push(...mlProducts);
             await browser.close();
