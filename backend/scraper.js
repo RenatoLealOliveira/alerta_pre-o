@@ -1,6 +1,4 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+
 const axios = require('axios');
 
 require('dotenv').config();
@@ -80,137 +78,63 @@ async function searchProducts(userQuery, options = {}) {
         }
     }
 
-    // --- 2. MERCADO LIVRE STRATEGY (Puppeteer) ---
+    // --- 2. MERCADO LIVRE STRATEGY (Official API) ---
     if (isMlEnabled) {
-        let browser;
         try {
-            const isProduction = process.env.NODE_ENV === 'production';
-            const launchArgs = [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-            ];
+            console.log(`[Scraper] 🔍 Searching ML API for: "${userQuery}"`);
 
-            browser = await puppeteer.launch({
-                headless: true,
-                args: launchArgs
-            });
-            const page = await browser.newPage();
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+            // Clean query for API
+            const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const apiUrl = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(cleanQuery)}&limit=15`;
 
-            let searchUrl = `https://lista.mercadolivre.com.br/${userQuery.replace(/\s+/g, '-')}`;
-            console.log(`[Scraper] 🔍 Searching ML: ${searchUrl}`);
+            const response = await axios.get(apiUrl);
+            const items = response.data.results || [];
 
-            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            console.log(`[Scraper] ✅ ML API found ${items.length} items.`);
 
-            // Wait for items
-            try {
-                await page.waitForSelector('.ui-search-layout__item, .andes-card, li.ui-search-layout__item', { timeout: 5000 });
-            } catch (e) { /* ignore timeout */ }
+            // We want to filter out accessories if possible. 
+            // The API returns 'domain_id' or 'category_id' which can help, but keywords are still effective.
+            const negativeKeywords = ['capa', 'case', 'pelicula', 'vidro', 'suporte', 'cabo', 'carregador', 'peca', 'peça', 'controle', 'jogo', 'bag', 'bolsa'];
 
-            const mlProducts = await page.evaluate((query) => {
-                const cleanText = (text) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                const queryClean = cleanText(query);
+            const mlProducts = items.map(item => {
+                const title = item.title;
+                const titleLower = title.toLowerCase();
 
-                const negativeKeywords = ['capa', 'case', 'pelicula', 'vidro', 'suporte', 'cabo', 'carregador', 'peca', 'peça', 'controle', 'jogo', 'bag', 'bolsa'];
-                const activeNegativeKeywords = negativeKeywords.filter(k => !queryClean.includes(k));
-                const queryWords = queryClean.split(/\s+/).filter(w => w.length > 2 || !isNaN(w));
+                // Keyword filtering
+                if (negativeKeywords.some(k => titleLower.includes(k))) return null;
 
-                const items = document.querySelectorAll('.ui-search-layout__item, .andes-card, li.ui-search-layout__item');
-                const results = [];
+                // Query matching verification (simple)
+                // Split query into significant words and check presence
+                const queryWords = cleanQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                const matchesAll = queryWords.every(w => titleLower.includes(w));
 
-                items.forEach(item => {
-                    // --- SELECTORS UPDATE FOR 2026 LAYOUT (Poly Card) ---
-                    // 1. Title
-                    const titleEl = item.querySelector('.poly-component__title, .ui-search-item__title, h2.ui-search-item__title');
+                // If it doesn't match roughly, we might skip. But ML API is usually good.
+                // Let's rely on ML ranking mostly, but filter obvious mismatches if strict mode is needed.
+                // For now, let's keep it permissive like the API.
 
-                    // 2. Link
-                    const linkEl = item.querySelector('a.poly-component__title, .ui-search-link, .ui-search-item__group__element.ui-search-link');
+                const price = item.price;
+                const link = item.permalink;
+                // Use higher res thumbnail if available (API usually returns 'http://http2.mlstatic.com/D_...I.jpg')
+                // replace 'I.jpg' with 'W.jpg' or similar often gives better res, but default thumbnail is safe.
+                const image = item.thumbnail.replace('http:', 'https:').replace('I.jpg', 'V.jpg'); // Attempt to get slightly better image if possible
 
-                    // 3. Image
-                    const imageEl = item.querySelector('.poly-component__picture, .ui-search-result-image__element');
+                const formattedPrice = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                    // 4. Price
-                    // The new layout puts valid prices in .poly-component__price
-                    // We need to match the "current" price. Usually it's the one that is NOT 'previous' (struck through).
+                return {
+                    title,
+                    price,
+                    formattedPrice,
+                    link,
+                    image,
+                    store: 'Mercado Livre'
+                };
+            }).filter(p => p !== null);
 
-                    let priceContainer;
-
-                    // Strategy A: Look for the specific "price" block locally in the item
-                    const priceBlock = item.querySelector('.poly-component__price, .ui-search-price');
-
-                    if (priceBlock) {
-                        // Find the distinct money amount that is NOT the previous price
-                        // .andes-money-amount--previous is the struck-through price
-                        priceContainer = priceBlock.querySelector('.andes-money-amount:not(.andes-money-amount--previous)');
-                    }
-
-                    // Strategy B: Fallback for older layouts
-                    if (!priceContainer) {
-                        priceContainer = item.querySelector('.ui-search-price__second-line .andes-money-amount');
-                    }
-                    if (!priceContainer) {
-                        priceContainer = item.querySelector('.price-tag-amount');
-                    }
-
-                    if (titleEl && priceContainer && linkEl) {
-                        const title = titleEl.innerText;
-                        const titleClean = cleanText(title);
-
-                        if (activeNegativeKeywords.some(k => titleClean.includes(k))) return;
-
-                        // Strict Match Logic
-                        const matchesAllWords = queryWords.every(word => {
-                            const safeWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            const patterns = [safeWord];
-                            if (word.endsWith('s')) patterns.push(safeWord.slice(0, -1));
-                            else patterns.push(safeWord + 's');
-                            return patterns.some(pattern => new RegExp(`\\b${pattern}\\b`, 'i').test(titleClean));
-                        });
-                        if (!matchesAllWords) return;
-
-                        // Price Extraction Logic (Fraction + Cents)
-                        const fractionEl = priceContainer.querySelector('.andes-money-amount__fraction, .price-tag-fraction');
-                        const centsEl = priceContainer.querySelector('.andes-money-amount__cents, .price-tag-cents');
-
-                        if (fractionEl) {
-                            const fraction = fractionEl.innerText.replace(/\./g, '');
-                            const cents = centsEl ? centsEl.innerText : '00';
-
-                            // Reconstruct full float: "599" + "." + "99" -> 599.99
-                            const price = parseFloat(`${fraction}.${cents}`);
-
-                            // Formatted string fallback
-                            const formattedPrice = `R$ ${fractionEl.innerText}${centsEl ? ',' + cents : ',00'}`;
-
-                            const link = linkEl.href;
-                            let image = '';
-                            if (imageEl) image = imageEl.getAttribute('src') || imageEl.getAttribute('data-src') || imageEl.getAttribute('content') || '';
-
-                            results.push({
-                                title,
-                                price,
-                                formattedPrice,
-                                link,
-                                image,
-                                store: 'Mercado Livre'
-                            });
-                        }
-                    }
-                });
-                return results;
-            }, userQuery);
-
-            console.log(`[Scraper] ✅ ML found ${mlProducts.length} items.`);
             allProducts.push(...mlProducts);
-            await browser.close();
 
         } catch (error) {
-            console.error(`[Scraper] ❌ ML Error: ${error.message}`);
-            errors.push(`Mercado Livre: ${error.message}`);
-            if (browser) await browser.close();
+            console.error(`[Scraper] ❌ ML API Error: ${error.message}`);
+            errors.push(`Mercado Livre API: ${error.message}`);
         }
     }
 
