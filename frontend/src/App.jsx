@@ -79,8 +79,8 @@ function App() {
         const randomTerm = featuredTerms[Math.floor(Math.random() * featuredTerms.length)];
         console.log(`🚀 Auto-searching for featured item: ${randomTerm}`);
 
-        // Initial search with just Mercado Livre enabled by default
-        handleSearch(randomTerm, { ml: true, google: false });
+        // Initial search with Google enabled by default
+        handleSearch(randomTerm, { ml: false, google: true });
     }, []);
 
     return (
