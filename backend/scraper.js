@@ -101,8 +101,22 @@ async function searchProducts(userQuery, options = {}) {
                 ]
             };
 
+            // Enable Proxy if Key is present
+            if (process.env.SCRAPEOPS_API_KEY) {
+                launchConfig.args.push('--proxy-server=proxy.scrapeops.io:5353');
+            }
+
             browser = await puppeteer.launch(launchConfig);
             const page = await browser.newPage();
+
+            // Authenticate Proxy
+            if (process.env.SCRAPEOPS_API_KEY) {
+                console.log('[Scraper] 🛡️ Using ScrapeOps Proxy');
+                await page.authenticate({
+                    username: 'scrapeops',
+                    password: process.env.SCRAPEOPS_API_KEY
+                });
+            }
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
