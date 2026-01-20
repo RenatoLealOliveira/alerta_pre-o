@@ -90,12 +90,7 @@ async function searchProducts(userQuery, options = {}) {
 
                 await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-                // Block Heavy Assets
-                await page.setRequestInterception(true);
-                page.on('request', (req) => {
-                    if (['image', 'stylesheet', 'font', 'media', 'other'].includes(req.resourceType())) req.abort();
-                    else req.continue();
-                });
+                // (Accessing full page to ensure stability)
 
                 const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
                 const searchUrl = `https://www.kabum.com.br/busca/${cleanQuery}`;
