@@ -167,31 +167,6 @@ const InputSection = ({ onSearch, isLoading }) => {
                         <input
                             type="checkbox"
                             className="peer sr-only"
-                            checked={selectedStores.ml}
-                            onChange={() => handleStoreToggle('ml')}
-                        />
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all overflow-hidden ${selectedStores.ml ? 'bg-white border-yellow-400 shadow-md transform scale-105' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 grayscale opacity-70'}`}>
-                            <img
-                                src="https://www.google.com/s2/favicons?domain=kabum.com.br&sz=64"
-                                alt="Kabum"
-                                className="w-6 h-6 object-contain"
-                            />
-                        </div>
-                        {/* Checkmark Badge */}
-                        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-0.5 opacity-0 peer-checked:opacity-100 transition-opacity z-10">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    </div>
-                    <span className={`text-sm sm:text-base font-medium transition-colors ${selectedStores.ml ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-500'}`}>Kabum</span>
-                </label>
-
-                <label className="flex items-center space-x-2 cursor-pointer group select-none">
-                    <div className="relative">
-                        <input
-                            type="checkbox"
-                            className="peer sr-only"
                             checked={selectedStores.google}
                             onChange={() => handleStoreToggle('google')}
                         />
@@ -210,6 +185,31 @@ const InputSection = ({ onSearch, isLoading }) => {
                         </div>
                     </div>
                     <span className={`text-sm sm:text-base font-medium transition-colors ${selectedStores.google ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-500'}`}>Google Shopping</span>
+                </label>
+
+                <label className="flex items-center space-x-2 cursor-pointer group select-none">
+                    <div className="relative">
+                        <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={selectedStores.ml}
+                            onChange={() => handleStoreToggle('ml')}
+                        />
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all overflow-hidden ${selectedStores.ml ? 'bg-white border-yellow-400 shadow-md transform scale-105' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 grayscale opacity-70'}`}>
+                            <img
+                                src="https://www.google.com/s2/favicons?domain=kabum.com.br&sz=64"
+                                alt="Kabum"
+                                className="w-6 h-6 object-contain"
+                            />
+                        </div>
+                        {/* Checkmark Badge */}
+                        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-0.5 opacity-0 peer-checked:opacity-100 transition-opacity z-10">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <span className={`text-sm sm:text-base font-medium transition-colors ${selectedStores.ml ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-500'}`}>Kabum</span>
                 </label>
             </div>
         </div>
