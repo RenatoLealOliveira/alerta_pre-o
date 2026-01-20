@@ -120,6 +120,17 @@ async function searchProducts(userQuery, options = {}) {
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
+            // --- OPTIMIZATION: BLOCK HEAVY ASSETS ---
+            await page.setRequestInterception(true);
+            page.on('request', (req) => {
+                const resourceType = req.resourceType();
+                if (['image', 'stylesheet', 'font', 'media', 'other'].includes(resourceType)) {
+                    req.abort();
+                } else {
+                    req.continue();
+                }
+            });
+
             // --- DIRECT NAVIGATION (Lighter for Render) ---
             // "Human Flow" failed on Render (Timeout on Home Page input).
             // Kabum usually accepts direct search links better than ML.
