@@ -5,7 +5,7 @@ const InputSection = ({ onSearch, isLoading }) => {
     const [url, setUrl] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [selectedStores, setSelectedStores] = useState({ ml: true, google: false });
+    const [selectedStores, setSelectedStores] = useState({ ml: false, google: true });
 
     // Lifecycle Log
     useEffect(() => {
