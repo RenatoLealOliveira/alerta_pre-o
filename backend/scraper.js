@@ -57,12 +57,12 @@ async function searchProducts(userQuery, options = {}) {
         })());
     }
 
-    // --- 2. KABUM STRATEGY (PUPPETEER) ---
+    // --- 2. MERCADO LIVRE STRATEGY (PUPPETEER) ---
     if (isMlEnabled) {
         promises.push((async () => {
             let browser;
             try {
-                console.log("[Scraper] 🚀 Launching Browser (Kabum Mode)...");
+                console.log("[Scraper] 🚀 Launching Browser (Mercado Livre Mode)...");
                 const puppeteer = require('puppeteer-extra');
                 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
                 puppeteer.use(StealthPlugin());
@@ -90,67 +90,97 @@ async function searchProducts(userQuery, options = {}) {
 
                 await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-                // (Accessing full page to ensure stability)
-
-                const cleanQuery = userQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-                const searchUrl = `https://www.kabum.com.br/busca/${cleanQuery}`;
+                const cleanQuery = userQuery.replace(/\s+/g, '-');
+                const searchUrl = `https://lista.mercadolivre.com.br/${cleanQuery}`;
                 console.log(`[Scraper] 🔍 Direct Navigation to: ${searchUrl}`);
 
                 await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
                 try {
-                    await page.waitForSelector('article, .productCard', { timeout: 20000 });
+                    await page.waitForSelector('.ui-search-layout__item, .andes-card, li.ui-search-layout__item', { timeout: 20000 });
                 } catch (e) {
                     console.log("[Scraper] ⚠️ Warning: Timeout waiting for product cards.");
                 }
 
-                const kabumProducts = await page.evaluate((query) => {
+                const mlProducts = await page.evaluate((query) => {
                     const cleanText = (text) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                    const queryClean = cleanText(query);
-                    const queryWords = queryClean.split(/\s+/).filter(w => w.length > 2);
-                    const items = document.querySelectorAll('article');
+                    const items = document.querySelectorAll('.ui-search-layout__item, .andes-card, li.ui-search-layout__item');
                     const results = [];
+
                     items.forEach(item => {
-                        const titleEl = item.querySelector('span.nameCard, h3');
-                        const linkEl = item.querySelector('a');
-                        const imageEl = item.querySelector('img.imageCard');
-                        const priceEl = item.querySelector('span.priceCard');
-                        if (titleEl && priceEl && linkEl) {
+                        // Title
+                        const titleEl = item.querySelector('.poly-component__title, .ui-search-item__title, h2.ui-search-item__title');
+                        // Link
+                        const linkEl = item.querySelector('a.poly-component__title, .ui-search-link, .ui-search-item__group__element.ui-search-link');
+                        // Image
+                        const imageEl = item.querySelector('.poly-component__picture, img.ui-search-result-image__element');
+                        // Price
+                        const priceBlock = item.querySelector('.poly-component__price, .ui-search-price');
+
+                        if (titleEl && priceBlock && linkEl) {
                             const title = titleEl.innerText || titleEl.textContent;
-                            const titleClean = cleanText(title);
-                            const matchesAll = queryWords.every(word => titleClean.includes(word));
-                            if (!matchesAll) return;
-                            const rawPrice = priceEl.innerText.replace(/R\$\s?/, '').replace(/\./g, '').replace(',', '.');
-                            const price = parseFloat(rawPrice);
-                            if (isNaN(price)) return;
-                            const formattedPrice = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            let link = linkEl.href;
-                            if (!link.startsWith('http')) link = 'https://www.kabum.com.br' + link;
-                            let image = '';
-                            if (imageEl) {
-                                image = imageEl.getAttribute('src') || imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset') || '';
-                                if (image && !image.startsWith('http')) {
-                                    image = `https:${image}`; // Kabum images often start with //
+
+                            // Simple price extraction (ignoring previous price)
+                            let priceContainer = priceBlock.querySelector('.andes-money-amount:not(.andes-money-amount--previous)');
+                            if (!priceContainer) {
+                                // Fallback
+                                priceContainer = item.querySelector('.ui-search-price__second-line .andes-money-amount');
+                            }
+
+                            if (priceContainer) {
+                                // Extract price parts
+                                const currencySymbol = priceContainer.querySelector('.andes-money-amount__currency-symbol')?.innerText || 'R$';
+                                const integerPart = priceContainer.querySelector('.andes-money-amount__fraction')?.innerText || '0';
+                                const centsPart = priceContainer.querySelector('.andes-money-amount__cents')?.innerText || '00';
+
+                                const rawPrice = integerPart.replace(/\./g, '') + '.' + centsPart;
+                                const price = parseFloat(rawPrice);
+
+                                if (!isNaN(price)) {
+                                    const formattedPrice = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                                    let link = linkEl.href;
+                                    let image = '';
+                                    if (imageEl) {
+                                        // Prioritize src, then data-src for lazy loading
+                                        image = imageEl.getAttribute('src') || imageEl.getAttribute('data-src') || '';
+                                    }
+
+                                    results.push({
+                                        title,
+                                        price,
+                                        formattedPrice,
+                                        link,
+                                        image,
+                                        store: 'Mercado Livre'
+                                    });
                                 }
                             }
-                            results.push({ title, price, formattedPrice, link, image, store: 'Kabum' });
                         }
                     });
-                    return results;
+
+                    // Simple text match filter on backend side or scraping side (optional, but good for relevance)
+                    // Checking if at least one word from query exists in title
+                    const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 2);
+                    return results.filter(r => {
+                        const t = r.title.toLowerCase();
+                        return queryWords.some(w => t.includes(w));
+                    });
+
                 }, userQuery);
 
-                if (kabumProducts.length === 0) {
+                if (mlProducts.length === 0) {
                     const debug = await page.evaluate(() => document.title);
                     console.log(`[Scraper] ⚠️ ZERO ITEMS. Title: "${debug}"`);
                 }
 
-                console.log(`[Scraper] ✅ Kabum found ${kabumProducts.length} items.`);
+                console.log(`[Scraper] ✅ Mercado Livre found ${mlProducts.length} items.`);
                 await browser.close();
-                return kabumProducts;
+                return mlProducts;
 
             } catch (error) {
-                console.error(`[Scraper] ❌ Kabum Error: ${error.message}`);
-                errors.push(`Kabum: ${error.message}`);
+                console.error(`[Scraper] ❌ Mercado Livre Error: ${error.message}`);
+                errors.push(`Mercado Livre: ${error.message}`);
                 if (browser) await browser.close();
                 return [];
             }
