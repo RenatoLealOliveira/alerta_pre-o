@@ -127,7 +127,12 @@ async function searchProducts(userQuery, options = {}) {
                             let link = linkEl.href;
                             if (!link.startsWith('http')) link = 'https://www.kabum.com.br' + link;
                             let image = '';
-                            if (imageEl) image = imageEl.src;
+                            if (imageEl) {
+                                image = imageEl.getAttribute('src') || imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset') || '';
+                                if (image && !image.startsWith('http')) {
+                                    image = `https:${image}`; // Kabum images often start with //
+                                }
+                            }
                             results.push({ title, price, formattedPrice, link, image, store: 'Kabum' });
                         }
                     });
